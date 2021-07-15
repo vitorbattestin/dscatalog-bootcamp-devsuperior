@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -29,8 +31,9 @@ public class ProductService {
     private CategoryRepository categoryRepository;
 
     @Transactional(readOnly = true)
-    public Page<ProductDTO> findAllPaged(Pageable pageable){
-        Page<Product> list = repository.findAll(pageable);
+    public Page<ProductDTO> findAllPaged(Long categoryId, String name, Pageable pageable) {
+        List<Category> categories = (categoryId == 0) ? null : Arrays.asList(categoryRepository.getOne(categoryId));
+        Page<Product> list = repository.find(categories, name, pageable);
         return list.map(x -> new ProductDTO(x));
     }
 
@@ -56,8 +59,7 @@ public class ProductService {
             copyDtoToEntity(dto, entity);
             entity = repository.save(entity);
             return new ProductDTO(entity);
-        }
-        catch (EntityNotFoundException e){
+        } catch (EntityNotFoundException e) {
             throw new ResourceNotFoundException("Id not found " + id);
         }
     }
@@ -65,11 +67,9 @@ public class ProductService {
     public void delete(Long id) {
         try {
             repository.deleteById(id);
-        }
-        catch (EmptyResultDataAccessException e){
+        } catch (EmptyResultDataAccessException e) {
             throw new ResourceNotFoundException("Id not found " + id);
-        }
-        catch (DataIntegrityViolationException e){
+        } catch (DataIntegrityViolationException e) {
             throw new DatabaseException("Integrity violation");
         }
     }
@@ -82,7 +82,7 @@ public class ProductService {
         entity.setPrice(dto.getPrice());
 
         entity.getCategories().clear();
-        for(CategoryDTO catDto : dto.getCategories()){
+        for (CategoryDTO catDto : dto.getCategories()) {
             Category category = categoryRepository.getOne(catDto.getId());
             entity.getCategories().add(category);
         }
